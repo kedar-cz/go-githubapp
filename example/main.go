@@ -26,7 +26,7 @@ import (
 )
 
 func main() {
-	config, err := ReadConfig("example/config.yml")
+	config, err := ReadConfig("/Users/krajwade/OneDrive/CloudZealous/Projects/scribeSecurity/repo/go-githubapp/example/config.yml")
 	if err != nil {
 		panic(err)
 	}
@@ -59,7 +59,12 @@ func main() {
 		preamble:      config.AppConfig.PullRequestPreamble,
 	}
 
-	webhookHandler := githubapp.NewDefaultEventDispatcher(config.Github, prCommentHandler)
+	branchHandler := &BranchHandler{
+		ClientCreator: cc,
+		preamble:      config.AppConfig.PullRequestPreamble,
+	}
+
+	webhookHandler := githubapp.NewDefaultEventDispatcher(config.Github, prCommentHandler, branchHandler)
 	server.Mux().Handle(pat.Post(githubapp.DefaultWebhookRoute), webhookHandler)
 
 	// Start is blocking
