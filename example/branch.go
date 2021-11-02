@@ -37,6 +37,7 @@ func (h *BranchHandler) Handles() []string {
 }
 
 func (h *BranchHandler) Handle(ctx context.Context, eventType, deliveryID string, payload []byte) error {
+
 	logctx := zerolog.Ctx(ctx).With()
 	logger := logctx.Logger()
 
@@ -79,6 +80,53 @@ func (h *BranchHandler) Handle(ctx context.Context, eventType, deliveryID string
 		// Write the event in its own file
 		file, _ := json.MarshalIndent(event, "", " ")
 		_ = ioutil.WriteFile(GetFilenameDate("push"), file, 0644)
+
+		h.GetAppInfo(ctx)
+		h.GetAllCommits(ctx, event)
+	}
+
+	return nil
+}
+
+func (h *BranchHandler) GetAppInfo(ctx context.Context) error {
+	logctx := zerolog.Ctx(ctx).With()
+	logger := logctx.Logger()
+
+	client, err := h.NewAppClient()
+	if err != nil {
+		return err
+	}
+	app, _, err := client.Apps.Get(ctx, "")
+	if err != nil {
+		logger.Error().Msgf("Apps.Get returned error: %v", err)
+	}
+	logger.Info().Msgf("Installed App ID : %d, App Name : %s", *app.ID, *app.Name)
+	return nil
+}
+
+func (h *BranchHandler) GetAllCommits(ctx context.Context, event github.PushEvent) error {
+	logctx := zerolog.Ctx(ctx).With()
+	logger := logctx.Logger()
+
+	client, err := h.NewInstallationClient(*event.Installation.ID)
+	if err != nil {
+		return err
+	}
+
+	opt := github.CommitsListOptions{}
+	commits, _, err := client.Repositories.ListCommits(ctx, *event.Repo.Owner.Name, *event.Repo.Name, &opt)
+	if err != nil {
+		logger.Error().Msgf("ListCommits returned error: %v", err)
+	}
+
+	logger.Info().Msgf("Total commit : %d", len(commits))
+
+	for _, commit := range commits {
+		logger.Info().Msgf("Author Name : %s, SHA : %s", commit.Author, *commit.SHA)
+		logger.Info().Msg("List of file changed as part of this commit are : ")
+		for _, file := range commit.Files {
+			logger.Info().Msgf("File Name : %s, File URL : %s", file.Filename, file.BlobURL)
+		}
 	}
 
 	return nil
