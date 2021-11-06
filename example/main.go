@@ -64,7 +64,18 @@ func main() {
 		preamble:      config.AppConfig.PullRequestPreamble,
 	}
 
-	webhookHandler := githubapp.NewDefaultEventDispatcher(config.Github, prCommentHandler, branchHandler)
+	pullRequestHandler := &PullRequestHandler{
+		ClientCreator: cc,
+		preamble:      config.AppConfig.PullRequestPreamble,
+	}
+
+	gitPushHandler := &GitPushHandler{
+		ClientCreator: cc,
+		preamble:      config.AppConfig.PullRequestPreamble,
+	}
+
+	webhookHandler := githubapp.NewDefaultEventDispatcher(config.Github, prCommentHandler, branchHandler,
+		pullRequestHandler, gitPushHandler)
 	server.Mux().Handle(pat.Post(githubapp.DefaultWebhookRoute), webhookHandler)
 
 	// Start is blocking
